@@ -30,15 +30,15 @@ jobs:
           chat_id = os.environ["CHAT_ID"]
 
           # Read all quotes
-          with open("quote.txt", "r", encoding="utf-8") as f:
+          with open("quotes.txt", "r", encoding="utf-8") as f:
               quotes = [line.strip() for line in f if line.strip()]
 
           if not quotes:
-              raise Exception("quote.txt is empty")
+              raise Exception("quotes.txt is empty")
 
-          # Read current position
+          # Read last quote position
           try:
-              with open("quote_index.txt", "r", encoding="utf-8") as f:
+              with open("last_index.txt", "r", encoding="utf-8") as f:
                   index = int(f.read().strip())
           except:
               index = 0
@@ -66,7 +66,7 @@ jobs:
           # Move to next quote
           next_index = (index + 1) % len(quotes)
 
-          with open("quote_index.txt", "w", encoding="utf-8") as f:
+          with open("last_index.txt", "w", encoding="utf-8") as f:
               f.write(str(next_index))
           PY
 
@@ -75,6 +75,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add quote_index.txt
+          git add last_index.txt
           git diff --cached --quiet || git commit -m "Update quote position"
           git push
