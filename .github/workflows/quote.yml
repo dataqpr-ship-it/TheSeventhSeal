@@ -1,0 +1,80 @@
+name: Send Catholic Quote
+
+on:
+  schedule:
+    - cron: "0 17,23,5,11 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  send-quote:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send next quote
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          python3 <<'PY'
+          import os
+          import urllib.request
+          import urllib.parse
+
+          token = os.environ["BOT_TOKEN"]
+          chat_id = os.environ["CHAT_ID"]
+
+          # Read all quotes
+          with open("quote.txt", "r", encoding="utf-8") as f:
+              quotes = [line.strip() for line in f if line.strip()]
+
+          if not quotes:
+              raise Exception("quote.txt is empty")
+
+          # Read current position
+          try:
+              with open("quote_index.txt", "r", encoding="utf-8") as f:
+                  index = int(f.read().strip())
+          except:
+              index = 0
+
+          # Select quote
+          quote = quotes[index % len(quotes)]
+
+          # Send to Telegram
+          url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+          data = urllib.parse.urlencode({
+              "chat_id": chat_id,
+              "text": quote
+          }).encode()
+
+          request = urllib.request.Request(url, data=data)
+
+          with urllib.request.urlopen(request, timeout=30) as response:
+              result = response.read().decode()
+
+          print("Telegram response:", result)
+          print(f"Sent quote #{index + 1}")
+          print(quote)
+
+          # Move to next quote
+          next_index = (index + 1) % len(quotes)
+
+          with open("quote_index.txt", "w", encoding="utf-8") as f:
+              f.write(str(next_index))
+          PY
+
+      - name: Save quote position
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add quote_index.txt
+          git diff --cached --quiet || git commit -m "Update quote position"
+          git push
